@@ -1,0 +1,76 @@
+{
+  "name": "aliasex",
+  "displayName": "Elixir Alias Helper",
+  "description": "Automatically add Elixir module aliases when referencing modules",
+  "version": "0.0.3",
+  "publisher": "Roman Sahel",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:elixir"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aliasex.addAlias",
+        "title": "Elixir: Add Alias"
+      },
+      {
+        "command": "aliasex.refreshCache",
+        "title": "Elixir: Refresh Module Cache"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "aliasex.addAlias",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a",
+        "when": "editorTextFocus && editorLangId == elixir"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "aliasex.addAlias",
+          "when": "editorLangId == elixir"
+        },
+        {
+          "command": "aliasex.refreshCache",
+          "when": "editorLangId == elixir"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "aliasex.addAlias",
+          "when": "editorLangId == elixir && editorHasSelection",
+          "group": "1_modification"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "eslint": "^9.32.0",
+    "typescript": "^5.9.2",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2"
+  },
+  "packageManager": "pnpm@9.15.4+sha512.b2dc20e2fc72b3e18848459b37359a32064663e5627a51e4c74b2c29dd8e8e0491483c3abb40789cfd578bf362fb6ba8261b05f0387d76792ed6e23ea3b1b6a0"
+}
