@@ -9,6 +9,13 @@ Automatically add Elixir module aliases when referencing modules in your code.
 - **Duplicate Detection**: Prevents adding duplicate aliases
 - **Keyboard Shortcuts**: Use `Cmd+Shift+A` (Mac) or `Ctrl+Shift+A` (Windows/Linux)
 
+## Available Commands
+- **Elixir: Add Alias**: Add an alias for the selected module name
+- **Elixir: Refresh Module Cache**: Manually refresh the module cache (useful after adding new modules)
+
+https://github.com/user-attachments/assets/c31a4e6a-ba87-4e04-80fb-ff6996c6dfba
+
+
 ## How to Use
 
 1. In an Elixir file, write code that references a module: `InboxEmailAlerts.get_alert_by_message_id(message_id)`
@@ -25,10 +32,6 @@ Automatically add Elixir module aliases when referencing modules in your code.
 - Elixir files with `.ex` or `.exs` extension
 - An Elixir project with `lib/` directory structure
 
-## Available Commands
-
-- **Elixir: Add Alias**: Add an alias for the selected module name
-- **Elixir: Refresh Module Cache**: Manually refresh the module cache (useful after adding new modules)
 
 ## Known Issues
 
