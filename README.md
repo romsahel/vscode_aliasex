@@ -38,7 +38,6 @@ https://github.com/user-attachments/assets/c31a4e6a-ba87-4e04-80fb-ff6996c6dfba
 Calling out known issues can help limit users opening duplicate issues against your extension.
 
 TODO: show a picker when there are multiple entries
-TODO: when there is no selection, we could expand the selection from the cursor position
 TODO: improve nested module handling
 TODO: dynamic cache rebuilding (when compilation is triggered?)
 

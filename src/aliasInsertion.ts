@@ -85,7 +85,11 @@ export class AliasInsertionService {
 
     const selection = editor.selection;
     if (selection.isEmpty) {
-      return undefined;
+      const wordRange = editor.document.getWordRangeAtPosition(selection.active);
+      if (!wordRange) {
+        return undefined;
+      }
+      return editor.document.getText(wordRange);
     }
 
     return editor.document.getText(selection);
