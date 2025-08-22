@@ -3,8 +3,12 @@ import { ModuleDiscoveryService } from "./moduleDiscovery";
 import { AliasInsertionService } from "./aliasInsertion";
 import { CommandService } from "./commands";
 
+let outputChannel: vscode.OutputChannel;
+
 export function activate(context: vscode.ExtensionContext) {
-  console.log("aliasex is now active!");
+  // Create output channel
+  outputChannel = vscode.window.createOutputChannel("Elixir Alias Helper");
+  outputChannel.appendLine("aliasex is now active!");
 
   // Initialize services
   const moduleDiscovery = new ModuleDiscoveryService();
@@ -30,7 +34,15 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   // Add to subscriptions
-  context.subscriptions.push(addAliasCommand, refreshCacheCommand);
+  context.subscriptions.push(
+    addAliasCommand,
+    refreshCacheCommand,
+    outputChannel
+  );
+}
+
+export function getOutputChannel(): vscode.OutputChannel {
+  return outputChannel;
 }
 
 // This method is called when your extension is deactivated
