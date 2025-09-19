@@ -36,13 +36,27 @@ export class CommandService {
         return;
       }
 
-      const fullModuleName =
-        this.moduleDiscovery.findModuleByShortName(moduleName);
-      if (!fullModuleName) {
+      const allMatches =
+        this.moduleDiscovery.findAllModulesByShortName(moduleName);
+      if (allMatches.length === 0) {
         vscode.window.showErrorMessage(
           `Module '${moduleName}' not found in cache. Try refreshing the cache.`
         );
         return;
+      }
+
+      let fullModuleName: string;
+      if (allMatches.length === 1) {
+        // Single match - use it directly
+        fullModuleName = allMatches[0];
+      } else {
+        // Multiple matches - show picker
+        const selected = await this.showModulePicker(allMatches, moduleName);
+        if (!selected) {
+          // User cancelled picker
+          return;
+        }
+        fullModuleName = selected;
       }
 
       await this.aliasInsertion.insertAlias(fullModuleName);
@@ -77,5 +91,20 @@ export class CommandService {
     }
 
     return undefined;
+  }
+
+  private async showModulePicker(
+    modules: string[],
+    shortName: string
+  ): Promise<string | undefined> {
+    const items: vscode.QuickPickItem[] = modules.map((fullModule) => ({
+      label: fullModule,
+    }));
+
+    const selected = await vscode.window.showQuickPick(items, {
+      placeHolder: `Multiple modules found for "${shortName}". Select one:`,
+    });
+
+    return selected?.label;
   }
 }

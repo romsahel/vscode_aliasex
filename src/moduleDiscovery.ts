@@ -3,28 +3,30 @@ import * as fs from "fs";
 import * as path from "path";
 
 export interface ModuleCache {
-  modules: Map<string, string>;
+  modules: Map<string, string[]>;
   lastBuilt: Date;
 }
 
 export class ModuleDiscoveryService {
   private cache: ModuleCache;
   private readonly moduleRegex = /defmodule\s+([A-Z][A-Za-z0-9_.]*)\s+do/g;
+  private readonly outputChannel: vscode.OutputChannel;
 
-  constructor() {
+  constructor(outputChannel: vscode.OutputChannel) {
     this.cache = {
-      modules: new Map(),
+      modules: new Map<string, string[]>(),
       lastBuilt: new Date(),
     };
+    this.outputChannel = outputChannel;
   }
 
   public async buildCache(): Promise<void> {
-    console.log("Building module cache...");
+    this.outputChannel.appendLine("Building module cache...");
     this.cache.modules.clear();
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
-      console.log("No workspace folder found");
+      this.outputChannel.appendLine("No workspace folder found");
       return;
     }
 
@@ -35,7 +37,9 @@ export class ModuleDiscoveryService {
     await this.scanDirectory(path.join(rootPath, "deps"));
 
     this.cache.lastBuilt = new Date();
-    console.log(`Cache built with ${this.cache.modules.size} modules`);
+    this.outputChannel.appendLine(
+      `Cache built with ${this.cache.modules.size} modules`
+    );
   }
 
   private async scanDirectory(dirPath: string): Promise<void> {
@@ -61,7 +65,9 @@ export class ModuleDiscoveryService {
         }
       }
     } catch (error) {
-      console.error(`Error scanning directory ${dirPath}:`, error);
+      this.outputChannel.appendLine(
+        `Error scanning directory ${dirPath}: ${error}`
+      );
     }
   }
 
@@ -74,22 +80,16 @@ export class ModuleDiscoveryService {
         const fullModuleName = match[1];
         const shortModuleName = this.extractShortName(fullModuleName);
 
-        // Store the mapping from short name to full qualified name
-        if (this.cache.modules.has(shortModuleName)) {
-          // Handle conflicts by keeping both
-          // TODO: show a picker when there are multiple entries
-          const existing = this.cache.modules.get(shortModuleName);
-          if (existing !== fullModuleName) {
-            console.log(
-              `Conflict found: ${shortModuleName} -> ${existing} vs ${fullModuleName}`
-            );
-          }
-        } else {
-          this.cache.modules.set(shortModuleName, fullModuleName);
+        const mapping = this.cache.modules.get(shortModuleName) || [];
+        if (!mapping.includes(fullModuleName)) {
+          mapping.push(fullModuleName);
         }
+        this.cache.modules.set(shortModuleName, mapping);
       }
     } catch (error) {
-      console.error(`Error scanning file ${filePath}:`, error);
+      this.outputChannel.appendLine(
+        `Error scanning file ${filePath}: ${error}`
+      );
     }
   }
 
@@ -98,11 +98,11 @@ export class ModuleDiscoveryService {
     return parts[parts.length - 1];
   }
 
-  public findModuleByShortName(shortName: string): string | undefined {
-    return this.cache.modules.get(shortName);
+  public findAllModulesByShortName(shortName: string): string[] {
+    return this.cache.modules.get(shortName) || [];
   }
 
-  public getAllModules(): Map<string, string> {
+  public getAllModules(): Map<string, string[]> {
     return new Map(this.cache.modules);
   }
 

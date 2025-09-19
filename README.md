@@ -7,6 +7,7 @@ Automatically add Elixir module aliases when referencing modules in your code.
 - **Quick Alias Addition**: Select a module name and automatically insert the correct `alias` statement
 - **Smart Module Discovery**: Scans your project's `lib/` and `deps/` directories to build a module registry
 - **Duplicate Detection**: Prevents adding duplicate aliases
+- **Conflict resolution**: Show a popover to select the correct module when multiple modules have the same name
 - **Keyboard Shortcuts**: Use `Cmd+Shift+A` (Mac) or `Ctrl+Shift+A` (Windows/Linux)
 
 ## Available Commands
@@ -30,14 +31,12 @@ https://github.com/user-attachments/assets/c31a4e6a-ba87-4e04-80fb-ff6996c6dfba
 
 - VS Code 1.74.0 or higher
 - Elixir files with `.ex` or `.exs` extension
-- An Elixir project with `lib/` directory structure
 
 
 ## Known Issues
 
 Calling out known issues can help limit users opening duplicate issues against your extension.
 
-TODO: show a picker when there are multiple entries
 TODO: improve nested module handling
 TODO: dynamic cache rebuilding (when compilation is triggered?)
 

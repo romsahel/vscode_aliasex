@@ -11,7 +11,7 @@ export function activate(context: vscode.ExtensionContext) {
   outputChannel.appendLine("aliasex is now active!");
 
   // Initialize services
-  const moduleDiscovery = new ModuleDiscoveryService();
+  const moduleDiscovery = new ModuleDiscoveryService(outputChannel);
   const aliasInsertion = new AliasInsertionService();
   const commandService = new CommandService(moduleDiscovery, aliasInsertion);
 
