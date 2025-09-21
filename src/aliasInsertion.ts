@@ -1,5 +1,11 @@
 import * as vscode from "vscode";
 
+type ModuleDefinitionRange = {
+  type: "defmodule" | "other";
+  line: number;
+  moduleIndex: number;
+};
+
 export class AliasInsertionService {
   public async insertAlias(fullModuleName: string): Promise<boolean> {
     const editor = vscode.window.activeTextEditor;
@@ -16,7 +22,7 @@ export class AliasInsertionService {
       return false;
     }
 
-    const defmoduleLineNumber = this.findDefmoduleLine(document);
+    const defmoduleLineNumber = await this.findDefmoduleLine(document);
     if (defmoduleLineNumber === -1) {
       vscode.window.showErrorMessage(
         "Could not find defmodule in current file"
@@ -48,29 +54,74 @@ export class AliasInsertionService {
     return aliasPattern.test(text);
   }
 
-  private findDefmoduleLine(document: vscode.TextDocument): number {
+  private async findDefmoduleLine(
+    document: vscode.TextDocument
+  ): Promise<number> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
       return -1;
     }
 
     const currentLine = editor.selection.active.line;
-    const textBeforeCursor = document.getText(
-      new vscode.Range(0, 0, currentLine, 0)
-    );
 
-    const defmoduleRegex = /^\s*defmodule\s+.*\s+do/gm;
-    const defmoduleLines: number[] = [];
+    try {
+      const modules = await this.getModulesFromElixir(document.fileName);
 
-    let match;
-    while ((match = defmoduleRegex.exec(textBeforeCursor)) !== null) {
-      const lineNumber =
-        textBeforeCursor.substring(0, match.index).split("\n").length - 1;
-      defmoduleLines.push(lineNumber);
+      // Find the innermost module that contains the cursor (convert to 0-based indexing)
+      let innermostModule: { start: number; end: number } | null = null;
+
+      for (const module of modules) {
+        const startLine = module.start - 1; // Convert to 0-based
+        const endLine = module.end - 1; // Convert to 0-based
+
+        if (currentLine >= startLine && currentLine <= endLine) {
+          // If this is the first module we found, or if this module is more nested
+          if (!innermostModule || startLine > innermostModule.start) {
+            innermostModule = { start: startLine, end: endLine };
+          }
+        }
+      }
+
+      return innermostModule ? innermostModule.start : -1;
+    } catch (error) {
+      vscode.window.showErrorMessage(`Error parsing Elixir modules: ${error}`);
+      return -1;
     }
+  }
 
-    // Return the last (closest) defmodule found before cursor
-    return defmoduleLines[defmoduleLines.length - 1];
+  private async getModulesFromElixir(
+    filePath: string
+  ): Promise<Array<{ name: string; start: number; end: number }>> {
+    const { execFile } = require("child_process");
+    const path = require("path");
+
+    return new Promise((resolve, reject) => {
+      // __dirname points to 'out/', we need to go to the extension root and then to 'src/'
+      const scriptPath = path.join(__dirname, "..", "src", "module_finder.exs");
+
+      execFile(
+        "elixir",
+        [scriptPath, filePath],
+        (error: any, stdout: string, stderr: string) => {
+          if (error) {
+            reject(`Elixir execution error: ${error.message}`);
+            return;
+          }
+
+          if (stderr) {
+            reject(`Elixir stderr: ${stderr}`);
+            return;
+          }
+
+          try {
+            const modules = JSON.parse(stdout.trim());
+            resolve(modules);
+          } catch (parseError) {
+            reject(`JSON parse error: ${parseError}`);
+          }
+        }
+      );
+    });
   }
 
   private escapeRegExp(string: string): string {
@@ -85,7 +136,9 @@ export class AliasInsertionService {
 
     const selection = editor.selection;
     if (selection.isEmpty) {
-      const wordRange = editor.document.getWordRangeAtPosition(selection.active);
+      const wordRange = editor.document.getWordRangeAtPosition(
+        selection.active
+      );
       if (!wordRange) {
         return undefined;
       }

@@ -37,7 +37,6 @@ https://github.com/user-attachments/assets/c31a4e6a-ba87-4e04-80fb-ff6996c6dfba
 
 Calling out known issues can help limit users opening duplicate issues against your extension.
 
-TODO: improve nested module handling
 TODO: dynamic cache rebuilding (when compilation is triggered?)
 
 ## Release Notes
