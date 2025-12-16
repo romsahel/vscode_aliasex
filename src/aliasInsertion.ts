@@ -23,16 +23,19 @@ export class AliasInsertionService {
     }
 
     const defmoduleLineNumber = await this.findDefmoduleLine(document);
-    if (defmoduleLineNumber === -1) {
-      vscode.window.showErrorMessage(
-        "Could not find defmodule in current file"
-      );
-      return false;
-    }
 
-    // Insert alias after defmodule line
-    const insertPosition = new vscode.Position(defmoduleLineNumber + 1, 0);
-    const aliasText = `  alias ${fullModuleName}\n`;
+    let insertPosition: vscode.Position;
+    let aliasText: string;
+
+    if (defmoduleLineNumber === -1) {
+      // No defmodule found, insert at the top of the file
+      insertPosition = new vscode.Position(0, 0);
+      aliasText = `alias ${fullModuleName}\n`;
+    } else {
+      // Insert alias after defmodule line
+      insertPosition = new vscode.Position(defmoduleLineNumber + 1, 0);
+      aliasText = `  alias ${fullModuleName}\n`;
+    }
 
     await editor.edit((editBuilder) => {
       editBuilder.insert(insertPosition, aliasText);
