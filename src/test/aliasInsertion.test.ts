@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { findModulesInLines } from "../aliasInsertion";
+import { findModulesInLines, findInnermostModuleLine } from "../aliasInsertion";
 
 suite("findModulesInLines", () => {
   test("returns empty array for empty file", () => {
@@ -98,34 +98,14 @@ suite("findModulesInLines", () => {
   });
 });
 
-suite("findModulesInLines – innermost module selection", () => {
-  /**
-   * Helper that replicates the selection logic from findDefmoduleLine:
-   * returns the start line of the innermost module containing cursorLine, or -1.
-   */
-  function innermostForCursor(
-    lines: string[],
-    cursorLine: number,
-  ): number {
-    const modules = findModulesInLines(lines);
-    let innermostStart = -1;
-    for (const m of modules) {
-      if (cursorLine >= m.start && cursorLine <= m.end) {
-        if (m.start > innermostStart) {
-          innermostStart = m.start;
-        }
-      }
-    }
-    return innermostStart;
-  }
-
+suite("findInnermostModuleLine", () => {
   test("cursor in top-level module body → returns that module", () => {
     const lines = [
       "defmodule Outer do", // 0
       "  :ok", // 1  ← cursor
       "end", // 2
     ];
-    assert.strictEqual(innermostForCursor(lines, 1), 0);
+    assert.strictEqual(findInnermostModuleLine(lines, 1), 0);
   });
 
   test("cursor inside nested module → returns inner module, not outer", () => {
@@ -136,7 +116,7 @@ suite("findModulesInLines – innermost module selection", () => {
       "  end", // 3
       "end", // 4
     ];
-    assert.strictEqual(innermostForCursor(lines, 2), 1);
+    assert.strictEqual(findInnermostModuleLine(lines, 2), 1);
   });
 
   test("cursor after nested module but still inside outer → returns outer", () => {
@@ -149,7 +129,7 @@ suite("findModulesInLines – innermost module selection", () => {
       "  :after_inner", // 4  ← cursor (inside Outer, after Inner)
       "end", // 5
     ];
-    assert.strictEqual(innermostForCursor(lines, 4), 0);
+    assert.strictEqual(findInnermostModuleLine(lines, 4), 0);
   });
 
   test("cursor outside all modules → returns -1", () => {
@@ -158,7 +138,7 @@ suite("findModulesInLines – innermost module selection", () => {
       "end", // 1
       ":standalone", // 2  ← cursor
     ];
-    assert.strictEqual(innermostForCursor(lines, 2), -1);
+    assert.strictEqual(findInnermostModuleLine(lines, 2), -1);
   });
 
   test("cursor on the defmodule line itself → returns that module", () => {
@@ -167,7 +147,7 @@ suite("findModulesInLines – innermost module selection", () => {
       "  :ok", // 1
       "end", // 2
     ];
-    assert.strictEqual(innermostForCursor(lines, 0), 0);
+    assert.strictEqual(findInnermostModuleLine(lines, 0), 0);
   });
 
   test("cursor on the end line → returns that module", () => {
@@ -176,7 +156,7 @@ suite("findModulesInLines – innermost module selection", () => {
       "  :ok", // 1
       "end", // 2  ← cursor
     ];
-    assert.strictEqual(innermostForCursor(lines, 2), 0);
+    assert.strictEqual(findInnermostModuleLine(lines, 2), 0);
   });
 
   test("two sibling modules – cursor in first", () => {
@@ -187,7 +167,7 @@ suite("findModulesInLines – innermost module selection", () => {
       "defmodule Bar do", // 3
       "end", // 4
     ];
-    assert.strictEqual(innermostForCursor(lines, 1), 0);
+    assert.strictEqual(findInnermostModuleLine(lines, 1), 0);
   });
 
   test("two sibling modules – cursor in second", () => {
@@ -198,6 +178,6 @@ suite("findModulesInLines – innermost module selection", () => {
       "  :ok", // 3  ← cursor
       "end", // 4
     ];
-    assert.strictEqual(innermostForCursor(lines, 3), 2);
+    assert.strictEqual(findInnermostModuleLine(lines, 3), 2);
   });
 });

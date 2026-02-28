@@ -8,15 +8,18 @@ export class AliasInsertionService {
     }
 
     const document = editor.document;
+    const text = document.getText();
 
-    if (this.aliasExists(document, fullModuleName)) {
+    if (aliasExists(text, fullModuleName)) {
       vscode.window.showInformationMessage(
         `Alias for ${fullModuleName} already exists`,
       );
       return false;
     }
 
-    const defmoduleLineNumber = this.findDefmoduleLine(document);
+    const cursorLine = editor.selection.active.line;
+    const lines = text.split("\n");
+    const defmoduleLineNumber = findInnermostModuleLine(lines, cursorLine);
 
     let insertPosition;
     let aliasText;
@@ -28,8 +31,7 @@ export class AliasInsertionService {
     } else {
       // Insert alias after defmodule line, matching its indentation level
       insertPosition = new vscode.Position(defmoduleLineNumber + 1, 0);
-      const defmoduleLineText = document.lineAt(defmoduleLineNumber).text;
-      const baseIndent = defmoduleLineText.match(/^(\s*)/)?.[1] ?? "";
+      const baseIndent = lines[defmoduleLineNumber].match(/^(\s*)/)?.[1] ?? "";
       aliasText = `${baseIndent}  alias ${fullModuleName}\n`;
     }
 
@@ -39,46 +41,6 @@ export class AliasInsertionService {
 
     vscode.window.showInformationMessage(`Added alias for ${fullModuleName}`);
     return true;
-  }
-
-  private aliasExists(
-    document: vscode.TextDocument,
-    fullModuleName: string,
-  ): boolean {
-    const text = document.getText();
-    const aliasPattern = new RegExp(
-      `alias\\s+${this.escapeRegExp(fullModuleName)}(?:\\s|$|,)`,
-      "gm",
-    );
-    return aliasPattern.test(text);
-  }
-
-  private findDefmoduleLine(document: vscode.TextDocument): number {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      return -1;
-    }
-
-    const cursorLine = editor.selection.active.line;
-    const lines = Array.from({ length: document.lineCount }, (_, i) =>
-      document.lineAt(i).text,
-    );
-    const modules = findModulesInLines(lines);
-
-    let innermostStart = -1;
-    for (const m of modules) {
-      if (cursorLine >= m.start && cursorLine <= m.end) {
-        if (m.start > innermostStart) {
-          innermostStart = m.start;
-        }
-      }
-    }
-
-    return innermostStart;
-  }
-
-  private escapeRegExp(string: string): string {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   public getSelectedText(): string | undefined {
@@ -100,6 +62,57 @@ export class AliasInsertionService {
 
     return editor.document.getText(selection);
   }
+}
+
+function aliasExists(text: string, fullModuleName: string): boolean {
+  const aliasPattern = new RegExp(
+    `alias\\s+${escapeRegExp(fullModuleName)}(?:\\s|$|,)`,
+    "gm",
+  );
+  return aliasPattern.test(text);
+}
+
+function escapeRegExp(string: string): string {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Returns the start line of the innermost defmodule enclosing cursorLine,
+ * or -1 if the cursor is not inside any defmodule.
+ *
+ * Scans only up to cursorLine (O(cursorLine)), relying on the indentation
+ * stack to track which modules are still open at the cursor position.
+ *
+ * Exported for unit testing.
+ */
+export function findInnermostModuleLine(
+  lines: string[],
+  cursorLine: number,
+): number {
+  const stack: Array<{ line: number; indent: number }> = [];
+  const limit = Math.min(cursorLine, lines.length - 1);
+
+  for (let i = 0; i <= limit; i++) {
+    const text = lines[i];
+    const trimmed = text.trim();
+
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    const indent = text.length - text.trimStart().length;
+
+    if (/^defmodule\s+/.test(trimmed)) {
+      stack.push({ line: i, indent });
+    } else if (trimmed === "end" && stack.length > 0) {
+      if (indent === stack[stack.length - 1].indent) {
+        stack.pop();
+      }
+    }
+  }
+
+  // The top of the stack is the innermost still-open module at the cursor
+  return stack.length > 0 ? stack[stack.length - 1].line : -1;
 }
 
 /**
