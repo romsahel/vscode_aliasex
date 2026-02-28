@@ -18,19 +18,20 @@ export class AliasInsertionService {
 
     const defmoduleLineNumber = this.findDefmoduleLine(document);
 
-    // Insert alias after defmodule line
     let insertPosition;
     let aliasText;
 
     if (defmoduleLineNumber === -1) {
       // No defmodule found, insert at the top of the file
       insertPosition = new vscode.Position(0, 0);
+      aliasText = `alias ${fullModuleName}\n`;
     } else {
-      // Insert alias after defmodule line
+      // Insert alias after defmodule line, matching its indentation level
       insertPosition = new vscode.Position(defmoduleLineNumber + 1, 0);
+      const defmoduleLineText = document.lineAt(defmoduleLineNumber).text;
+      const baseIndent = defmoduleLineText.match(/^(\s*)/)?.[1] ?? "";
+      aliasText = `${baseIndent}  alias ${fullModuleName}\n`;
     }
-
-    aliasText = `  alias ${fullModuleName}\n`;
 
     await editor.edit((editBuilder) => {
       editBuilder.insert(insertPosition, aliasText);
@@ -58,25 +59,22 @@ export class AliasInsertionService {
       return -1;
     }
 
-    const currentLine = editor.selection.active.line;
-    const textBeforeCursor = document.getText(
-      new vscode.Range(0, 0, currentLine, 0),
+    const cursorLine = editor.selection.active.line;
+    const lines = Array.from({ length: document.lineCount }, (_, i) =>
+      document.lineAt(i).text,
     );
+    const modules = findModulesInLines(lines);
 
-    const defmoduleRegex = /^\s*defmodule\s+.*\s+do/gm;
-    const defmoduleLines: number[] = [];
-
-    let match;
-    while ((match = defmoduleRegex.exec(textBeforeCursor)) !== null) {
-      const lineNumber =
-        textBeforeCursor.substring(0, match.index).split("\n").length - 1;
-      defmoduleLines.push(lineNumber);
+    let innermostStart = -1;
+    for (const m of modules) {
+      if (cursorLine >= m.start && cursorLine <= m.end) {
+        if (m.start > innermostStart) {
+          innermostStart = m.start;
+        }
+      }
     }
 
-    // Return the last (closest) defmodule found before cursor
-    return defmoduleLines.length > 0
-      ? defmoduleLines[defmoduleLines.length - 1]
-      : -1;
+    return innermostStart;
   }
 
   private escapeRegExp(string: string): string {
@@ -102,4 +100,45 @@ export class AliasInsertionService {
 
     return editor.document.getText(selection);
   }
+}
+
+/**
+ * Finds all defmodule ranges in the given lines using an indentation-based
+ * stack. Each defmodule is paired with the first `end` at the same indentation
+ * level that follows it.
+ *
+ * Exported for unit testing.
+ */
+export function findModulesInLines(
+  lines: string[],
+): Array<{ start: number; end: number }> {
+  const modules: Array<{ start: number; end: number }> = [];
+  const stack: Array<{ line: number; indent: number }> = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const text = lines[i];
+    const trimmed = text.trim();
+
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    const indent = text.length - text.trimStart().length;
+
+    if (/^defmodule\s+/.test(trimmed)) {
+      stack.push({ line: i, indent });
+    } else if (trimmed === "end" && stack.length > 0) {
+      if (indent === stack[stack.length - 1].indent) {
+        const top = stack.pop()!;
+        modules.push({ start: top.line, end: i });
+      }
+    }
+  }
+
+  // Flush any unclosed modules (e.g. cursor is past the last `end`)
+  for (const item of stack) {
+    modules.push({ start: item.line, end: lines.length - 1 });
+  }
+
+  return modules;
 }
